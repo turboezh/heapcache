@@ -58,6 +58,7 @@ type HeapCache struct {
 	mutex    sync.RWMutex
 }
 
+// Capacity allowed to be zero. In this case cache becomes dummy, 'Add' do nothing and items can't be stored in.
 func NewHeapCache(capacity uint) *HeapCache {
 	return &HeapCache{
 		capacity: capacity,
@@ -69,6 +70,10 @@ func NewHeapCache(capacity uint) *HeapCache {
 func (c *HeapCache) Add(key interface{}, value interface{}, priority int64) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
+	if c.capacity == 0 {
+		return
+	}
 
 	if item, ok := c.items[key]; ok { // already exists
 		item.Value = value
@@ -91,6 +96,10 @@ func (c *HeapCache) Add(key interface{}, value interface{}, priority int64) {
 func (c *HeapCache) AddMany(items ...HeapCacheItem) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
+	if c.capacity == 0 {
+		return
+	}
 
 	toAdd := make([]*HeapCacheItem, 0, len(items))
 

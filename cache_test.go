@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -82,17 +83,25 @@ func TestHeapCache_AddMany(t *testing.T) {
 }
 
 func TestHeapCache_Evict(t *testing.T) {
-	c := NewHeapCache(2)
+	var i int
+	capacity := 50
+	n := 100
 
-	c.Add("foo1", "bar1", 10)
-	c.Add("foo2", "bar2", 20)
-	c.Add("foo3", "bar3", 30)
+	c := NewHeapCache(uint(capacity))
 
-	assert.Equal(t, 2, c.Len())
+	for i = 0; i < n; i++ {
+		c.Add(i, i, int64(i))
+	}
 
-	assert.False(t, c.Contains("foo1"))
-	assert.True(t, c.Contains("foo2"))
-	assert.True(t, c.Contains("foo3"))
+	assert.Equal(t, int(math.Min(float64(capacity), float64(n))), c.Len())
+
+	for i = 0; i < n; i++ {
+		if i < n-capacity {
+			assert.False(t, c.Contains(i))
+		} else {
+			assert.True(t, c.Contains(i))
+		}
+	}
 }
 
 func TestHeapCache_Remove(t *testing.T) {
@@ -147,4 +156,35 @@ func TestHeapCache_Priority(t *testing.T) {
 	assert.Equal(t, c.Len(), 3)
 	assert.True(t, c.Contains("foo5"))
 	assert.False(t, c.Contains("foo3"))
+}
+
+func TestItemsHeap_ZeroCapacity(t *testing.T) {
+	c := NewHeapCache(0)
+
+	c.Add("foo", "bar", 1)
+	assert.False(t, c.Contains("foo"))
+}
+
+func BenchmarkHeapCache_Add(b *testing.B) {
+	c := NewHeapCache(uint(b.N))
+
+	for n := 0; n < b.N; n++ {
+		c.Add(n, n, int64(n))
+	}
+}
+
+func BenchmarkHeapCache_AddWithEvictHalf(b *testing.B) {
+	c := NewHeapCache(uint(b.N / 2))
+
+	for n := 0; n < b.N; n++ {
+		c.Add(n, n, int64(n))
+	}
+}
+
+func BenchmarkHeapCache_Get(b *testing.B) {
+	c := NewHeapCache(uint(b.N))
+
+	for n := 0; n < b.N; n++ {
+		c.Get(n)
+	}
 }
