@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-type HeapCacheItem struct {
+type Item struct {
 	index    int
 	Key      interface{}
 	Value    interface{}
@@ -13,12 +13,12 @@ type HeapCacheItem struct {
 }
 
 type itemsHeap struct {
-	items []*HeapCacheItem
+	items []*Item
 }
 
 func newItemsHeap(capacity uint) *itemsHeap {
 	return &itemsHeap{
-		items: make([]*HeapCacheItem, 0, capacity),
+		items: make([]*Item, 0, capacity),
 	}
 }
 
@@ -37,7 +37,7 @@ func (h *itemsHeap) Swap(i, j int) {
 }
 
 func (h *itemsHeap) Push(value interface{}) {
-	item := value.(*HeapCacheItem)
+	item := value.(*Item)
 	item.index = len(h.items)
 	h.items = append(h.items, item)
 }
@@ -51,23 +51,23 @@ func (h *itemsHeap) Pop() interface{} {
 	return item
 }
 
-type HeapCache struct {
+type Cache struct {
 	capacity uint
 	heap     *itemsHeap
-	items    map[interface{}]*HeapCacheItem
+	items    map[interface{}]*Item
 	mutex    sync.RWMutex
 }
 
 // Capacity allowed to be zero. In this case cache becomes dummy, 'Add' do nothing and items can't be stored in.
-func NewHeapCache(capacity uint) *HeapCache {
-	return &HeapCache{
+func New(capacity uint) *Cache {
+	return &Cache{
 		capacity: capacity,
 		heap:     newItemsHeap(capacity),
-		items:    make(map[interface{}]*HeapCacheItem, capacity),
+		items:    make(map[interface{}]*Item, capacity),
 	}
 }
 
-func (c *HeapCache) Add(key interface{}, value interface{}, priority int64) {
+func (c *Cache) Add(key interface{}, value interface{}, priority int64) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -88,12 +88,12 @@ func (c *HeapCache) Add(key interface{}, value interface{}, priority int64) {
 		c.evict(1)
 	}
 
-	item := &HeapCacheItem{Key: key, Value: value, Priority: priority}
+	item := &Item{Key: key, Value: value, Priority: priority}
 	heap.Push(c.heap, item)
 	c.items[key] = item
 }
 
-func (c *HeapCache) AddMany(items ...HeapCacheItem) {
+func (c *Cache) AddMany(items ...Item) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -101,10 +101,10 @@ func (c *HeapCache) AddMany(items ...HeapCacheItem) {
 		return
 	}
 
-	toAdd := make([]*HeapCacheItem, 0, len(items))
+	toAdd := make([]*Item, 0, len(items))
 
 	{
-		var oldItem *HeapCacheItem
+		var oldItem *Item
 		var ok bool
 
 		for n := 0; n < len(items); n++ {
@@ -137,7 +137,7 @@ func (c *HeapCache) AddMany(items ...HeapCacheItem) {
 	}
 }
 
-func (c *HeapCache) Get(key interface{}) (interface{}, bool) {
+func (c *Cache) Get(key interface{}) (interface{}, bool) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -148,7 +148,7 @@ func (c *HeapCache) Get(key interface{}) (interface{}, bool) {
 	return nil, false
 }
 
-func (c *HeapCache) Contains(key interface{}) bool {
+func (c *Cache) Contains(key interface{}) bool {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -156,7 +156,7 @@ func (c *HeapCache) Contains(key interface{}) bool {
 	return ok
 }
 
-func (c *HeapCache) Remove(key interface{}) bool {
+func (c *Cache) Remove(key interface{}) bool {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -169,7 +169,7 @@ func (c *HeapCache) Remove(key interface{}) bool {
 	return false
 }
 
-func (c *HeapCache) Len() int {
+func (c *Cache) Len() int {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -177,10 +177,10 @@ func (c *HeapCache) Len() int {
 }
 
 // caller must keep write lock
-func (c *HeapCache) evict(count uint) {
+func (c *Cache) evict(count uint) {
 	for count > 0 {
 		item := heap.Pop(c.heap)
-		delete(c.items, item.(*HeapCacheItem).Key)
+		delete(c.items, item.(*Item).Key)
 		count--
 	}
 }

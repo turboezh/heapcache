@@ -8,7 +8,7 @@ import (
 )
 
 func TestHeapCache_Add(t *testing.T) {
-	c := NewHeapCache(10)
+	c := New(10)
 
 	c.Add("foo1", "bar1", 1)
 	c.Add("foo2", "bar2", 1)
@@ -33,7 +33,7 @@ func TestHeapCache_Add(t *testing.T) {
 }
 
 func TestHeapCache_Get(t *testing.T) {
-	c := NewHeapCache(10)
+	c := New(10)
 
 	c.Add("foo1", "bar1", 1)
 	{
@@ -49,7 +49,7 @@ func TestHeapCache_Get(t *testing.T) {
 }
 
 func TestHeapCache_Len(t *testing.T) {
-	c := NewHeapCache(10)
+	c := New(10)
 
 	c.Add("foo1", "bar1", 1)
 
@@ -57,12 +57,12 @@ func TestHeapCache_Len(t *testing.T) {
 }
 
 func TestHeapCache_AddMany(t *testing.T) {
-	c := NewHeapCache(3)
+	c := New(3)
 
-	item1 := HeapCacheItem{Key: "foo1", Value: "bar1", Priority: 1}
-	item2 := HeapCacheItem{Key: "foo2", Value: "bar2", Priority: 2}
-	item3 := HeapCacheItem{Key: "foo3", Value: "bar3", Priority: 3}
-	item4 := HeapCacheItem{Key: "foo4", Value: "bar4", Priority: 4}
+	item1 := Item{Key: "foo1", Value: "bar1", Priority: 1}
+	item2 := Item{Key: "foo2", Value: "bar2", Priority: 2}
+	item3 := Item{Key: "foo3", Value: "bar3", Priority: 3}
+	item4 := Item{Key: "foo4", Value: "bar4", Priority: 4}
 
 	c.AddMany(item1, item2)
 
@@ -87,7 +87,7 @@ func TestHeapCache_Evict(t *testing.T) {
 	capacity := 50
 	n := 100
 
-	c := NewHeapCache(uint(capacity))
+	c := New(uint(capacity))
 
 	for i = 0; i < n; i++ {
 		c.Add(i, i, int64(i))
@@ -105,7 +105,7 @@ func TestHeapCache_Evict(t *testing.T) {
 }
 
 func TestHeapCache_Remove(t *testing.T) {
-	c := NewHeapCache(10)
+	c := New(10)
 
 	c.Add("foo1", "bar1", 1)
 	c.Add("foo2", "bar2", 1)
@@ -118,7 +118,7 @@ func TestHeapCache_Remove(t *testing.T) {
 }
 
 func TestHeapCache_Contains(t *testing.T) {
-	c := NewHeapCache(10)
+	c := New(10)
 
 	c.Add("foo1", "bar1", 1)
 	c.Add("foo2", "bar2", 1)
@@ -133,7 +133,7 @@ func TestHeapCache_Contains(t *testing.T) {
 }
 
 func TestHeapCache_Priority(t *testing.T) {
-	c := NewHeapCache(3)
+	c := New(3)
 
 	c.Add("foo1", "bar1", 10)
 	c.Add("foo2", "bar2", 20)
@@ -159,15 +159,15 @@ func TestHeapCache_Priority(t *testing.T) {
 }
 
 func TestItemsHeap_ZeroCapacity(t *testing.T) {
-	c := NewHeapCache(0)
+	c := New(0)
 
 	c.Add("foo", "bar", 1)
-	c.AddMany(HeapCacheItem{Key: "foo", Value: "bar", Priority: 1})
+	c.AddMany(Item{Key: "foo", Value: "bar", Priority: 1})
 	assert.False(t, c.Contains("foo"))
 }
 
 func BenchmarkHeapCache_Add(b *testing.B) {
-	c := NewHeapCache(uint(b.N))
+	c := New(uint(b.N))
 
 	for n := 0; n < b.N; n++ {
 		c.Add(n, n, int64(n))
@@ -175,7 +175,7 @@ func BenchmarkHeapCache_Add(b *testing.B) {
 }
 
 func BenchmarkHeapCache_AddWithEvictHalf(b *testing.B) {
-	c := NewHeapCache(uint(b.N / 2))
+	c := New(uint(b.N / 2))
 
 	for n := 0; n < b.N; n++ {
 		c.Add(n, n, int64(n))
@@ -183,7 +183,7 @@ func BenchmarkHeapCache_AddWithEvictHalf(b *testing.B) {
 }
 
 func BenchmarkHeapCache_Get(b *testing.B) {
-	c := NewHeapCache(uint(b.N))
+	c := New(uint(b.N))
 
 	for n := 0; n < b.N; n++ {
 		c.Get(n)
