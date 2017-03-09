@@ -162,6 +162,7 @@ func TestItemsHeap_ZeroCapacity(t *testing.T) {
 	c := NewHeapCache(0)
 
 	c.Add("foo", "bar", 1)
+	c.AddMany(HeapCacheItem{Key: "foo", Value: "bar", Priority: 1})
 	assert.False(t, c.Contains("foo"))
 }
 
