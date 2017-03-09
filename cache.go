@@ -1,4 +1,4 @@
-package cache
+package heapcache
 
 import (
 	"container/heap"
