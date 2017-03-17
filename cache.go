@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// Cache item (wrapper)
 type Item struct {
 	index    int
 	Key      interface{}
@@ -67,6 +68,7 @@ func New(capacity uint) *Cache {
 	}
 }
 
+// `key` must be a KeyType (see https://golang.org/ref/spec#KeyType)
 func (c *Cache) Add(key interface{}, value interface{}, priority int64) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -93,6 +95,7 @@ func (c *Cache) Add(key interface{}, value interface{}, priority int64) {
 	c.items[key] = item
 }
 
+// It's optimized for inserting many items at once
 func (c *Cache) AddMany(items ...Item) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -156,6 +159,7 @@ func (c *Cache) Contains(key interface{}) bool {
 	return ok
 }
 
+// Returns true if item was removed. Returns false if there is no item in cache.
 func (c *Cache) Remove(key interface{}) bool {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -169,6 +173,7 @@ func (c *Cache) Remove(key interface{}) bool {
 	return false
 }
 
+// Number of items in cache
 func (c *Cache) Len() int {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
