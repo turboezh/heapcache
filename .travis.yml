@@ -24,15 +24,10 @@ before_script:
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
   - ./cc-test-reporter before-build
-  # gocov
-  - go get -u github.com/axw/gocov/gocov
-  - go install github.com/axw/gocov/gocov
-  - chmod +x $GOPATH/bin/gocov
 
 script:
   - go test -v -race -coverprofile=coverage.out -covermode=atomic
 
 after_script:
-  - $GOPATH/bin/gocov convert coverage.out > gocov.out
-  - ./cc-test-reporter format-coverage -t gocov gocov.out
+  - ./cc-test-reporter format-coverage -t gocov coverage.out
   - ./cc-test-reporter upload-coverage
