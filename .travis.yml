@@ -30,8 +30,9 @@ before_script:
   - chmod +x $GOPATH/bin/gocov
 
 script:
-  - $GOPATH/bin/gocov test -v -race -coverprofile=coverage.out -covermode=atomic
+  - go test -v -race -coverprofile=coverage.out -covermode=atomic
 
 after_script:
-  - ./cc-test-reporter format-coverage -t gocov coverage.out
+  - $GOPATH/bin/gocov convert coverage.out > gocov.out
+  - ./cc-test-reporter format-coverage -t gocov gocov.out
   - ./cc-test-reporter upload-coverage
