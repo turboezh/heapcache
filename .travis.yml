@@ -6,7 +6,9 @@ go:
   - tip
 
 env:
-  - DEP_VERSION="0.3.2"
+  global:
+    - DEP_VERSION="0.3.2"
+    - CC_TEST_REPORTER_ID=1d904046788b6f68a50265a9d1fd89263709d30bd332156ac86ed3e55aca8a37
 
 before_install:
   # Download the binary to bin folder in $GOPATH
@@ -17,8 +19,13 @@ before_install:
 install:
   - dep ensure -vendor-only
 
+before_script:
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
+
 script:
   - go test -v -race -coverprofile=coverage.txt -covermode=atomic
 
-after_success:
-  - bash <(curl -s https://codecov.io/bash)
+after_script:
+  - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
