@@ -4,7 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/turboezh/heapcache)](https://goreportcard.com/report/github.com/turboezh/heapcache)
 [![Maintainability](https://api.codeclimate.com/v1/badges/de484103003b548529f0/maintainability)](https://codeclimate.com/github/turboezh/heapcache/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/de484103003b548529f0/test_coverage)](https://codeclimate.com/github/turboezh/heapcache/test_coverage)
-[![Github All Releases](https://img.shields.io/github/downloads/turboezh/heapcahce/total.svg)]()
+![Downloads](https://img.shields.io/github/downloads/turboezh/heapcahce/total.svg)
 [![GoDoc](https://godoc.org/github.com/turboezh/heapcache?status.svg)](https://godoc.org/github.com/turboezh/heapcache)
 
 Heap based cache with 'priority' evict policy
