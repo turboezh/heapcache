@@ -1,4 +1,5 @@
 # heapcache
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/ae4552b57a7744f9bb92868e56f4151a)](https://www.codacy.com/app/turboezh/heapcache?utm_source=github.com&utm_medium=referral&utm_content=turboezh/heapcache&utm_campaign=badger)
 [![Build Status](https://travis-ci.org/turboezh/heapcache.svg)](https://travis-ci.org/turboezh/heapcache)
 [![codecov](https://codecov.io/gh/turboezh/heapcache/branch/master/graph/badge.svg)](https://codecov.io/gh/turboezh/heapcache)
 [![Go Report Card](https://goreportcard.com/badge/github.com/turboezh/heapcache)](https://goreportcard.com/report/github.com/turboezh/heapcache)
