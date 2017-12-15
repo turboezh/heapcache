@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// Cache item (wrapper)
+// Item is a cache item wrapper
 type Item struct {
 	index    int
 	Key      interface{}
@@ -52,6 +52,7 @@ func (h *itemsHeap) Pop() interface{} {
 	return item
 }
 
+// Cache is a cache abstraction
 type Cache struct {
 	capacity uint
 	heap     *itemsHeap
@@ -59,6 +60,7 @@ type Cache struct {
 	mutex    sync.RWMutex
 }
 
+// New creates a new Cache instance
 // Capacity allowed to be zero. In this case cache becomes dummy, 'Add' do nothing and items can't be stored in.
 func New(capacity uint) *Cache {
 	return &Cache{
@@ -68,6 +70,7 @@ func New(capacity uint) *Cache {
 	}
 }
 
+// Add adds a `value` into a cache. If `key` already exists, `value` and `priority` will be overwritten.
 // `key` must be a KeyType (see https://golang.org/ref/spec#KeyType)
 func (c *Cache) Add(key interface{}, value interface{}, priority int64) {
 	c.mutex.Lock()
@@ -95,7 +98,8 @@ func (c *Cache) Add(key interface{}, value interface{}, priority int64) {
 	c.items[key] = item
 }
 
-// It's optimized for inserting many items at once
+// AddMany adds many items at once.
+// (It's optimized for this.)
 func (c *Cache) AddMany(items ...Item) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -140,6 +144,7 @@ func (c *Cache) AddMany(items ...Item) {
 	}
 }
 
+// Get gets a value by `key`
 func (c *Cache) Get(key interface{}) (interface{}, bool) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -151,6 +156,7 @@ func (c *Cache) Get(key interface{}) (interface{}, bool) {
 	return nil, false
 }
 
+// Contains checks of `key` existence.
 func (c *Cache) Contains(key interface{}) bool {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -159,6 +165,7 @@ func (c *Cache) Contains(key interface{}) bool {
 	return ok
 }
 
+// Remove removes a value from cache.
 // Returns true if item was removed. Returns false if there is no item in cache.
 func (c *Cache) Remove(key interface{}) bool {
 	c.mutex.Lock()
@@ -173,7 +180,7 @@ func (c *Cache) Remove(key interface{}) bool {
 	return false
 }
 
-// Number of items in cache
+// Len returns a number of items in cache
 func (c *Cache) Len() int {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
