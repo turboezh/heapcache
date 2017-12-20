@@ -5,58 +5,30 @@ import (
 	"sync"
 )
 
+// KeyType is a type of item key
+type KeyType interface{}
+
+// ValueType is a type of item value
+type ValueType interface{}
+
+// PriorityType is a type of item priority
+type PriorityType int
+
 // Item is a cache item wrapper
 type Item struct {
 	index    int
-	Key      interface{}
-	Value    interface{}
-	Priority int64
+	Key      KeyType
+	Value    ValueType
+	Priority PriorityType
 }
 
-type itemsHeap struct {
-	items []*Item
-}
-
-func newItemsHeap(capacity uint) *itemsHeap {
-	return &itemsHeap{
-		items: make([]*Item, 0, capacity),
-	}
-}
-
-func (h *itemsHeap) Len() int {
-	return len(h.items)
-}
-
-func (h *itemsHeap) Less(i, j int) bool {
-	return h.items[i].Priority < h.items[j].Priority
-}
-
-func (h *itemsHeap) Swap(i, j int) {
-	h.items[i], h.items[j] = h.items[j], h.items[i]
-	h.items[i].index = i
-	h.items[j].index = j
-}
-
-func (h *itemsHeap) Push(value interface{}) {
-	item := value.(*Item)
-	item.index = len(h.items)
-	h.items = append(h.items, item)
-}
-
-func (h *itemsHeap) Pop() interface{} {
-	old := h.items
-	n := len(old)
-	item := old[n-1]
-	item.index = -1 // for safety
-	h.items = old[0 : n-1]
-	return item
-}
+type itemsMap map[KeyType]*Item
 
 // Cache is a cache abstraction
 type Cache struct {
 	capacity uint
-	heap     *itemsHeap
-	items    map[interface{}]*Item
+	heap     itemsHeap
+	items    itemsMap
 	mutex    sync.RWMutex
 }
 
@@ -65,26 +37,42 @@ type Cache struct {
 func New(capacity uint) *Cache {
 	return &Cache{
 		capacity: capacity,
-		heap:     newItemsHeap(capacity),
-		items:    make(map[interface{}]*Item, capacity),
+		heap:     make(itemsHeap, 0, capacity),
+		items:    make(itemsMap, capacity),
 	}
 }
 
 // Add adds a `value` into a cache. If `key` already exists, `value` and `priority` will be overwritten.
 // `key` must be a KeyType (see https://golang.org/ref/spec#KeyType)
-func (c *Cache) Add(key interface{}, value interface{}, priority int64) {
+func (c *Cache) Add(key KeyType, value ValueType, priority PriorityType) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
+	item := Item{Key: key, Value: value, Priority: priority}
+	c.addItem(&item)
+}
+
+// AddMany adds many items at once.
+func (c *Cache) AddMany(items ...Item) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	for _, item := range items {
+		item := item
+		c.addItem(&item)
+	}
+}
+
+func (c *Cache) addItem(newItem *Item) {
 	if c.capacity == 0 {
 		return
 	}
 
-	if item, ok := c.items[key]; ok { // already exists
-		item.Value = value
-		if item.Priority != priority {
-			item.Priority = priority
-			heap.Fix(c.heap, item.index)
+	if item, ok := c.items[newItem.Key]; ok { // already exists
+		item.Value = newItem.Value
+		if item.Priority != newItem.Priority {
+			item.Priority = newItem.Priority
+			heap.Fix(&c.heap, item.index)
 		}
 		return
 	}
@@ -93,59 +81,12 @@ func (c *Cache) Add(key interface{}, value interface{}, priority int64) {
 		c.evict(1)
 	}
 
-	item := &Item{Key: key, Value: value, Priority: priority}
-	heap.Push(c.heap, item)
-	c.items[key] = item
-}
-
-// AddMany adds many items at once.
-// (It's optimized for this.)
-func (c *Cache) AddMany(items ...Item) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	if c.capacity == 0 {
-		return
-	}
-
-	toAdd := make([]*Item, 0, len(items))
-
-	{
-		var oldItem *Item
-		var ok bool
-
-		for n := 0; n < len(items); n++ {
-			if oldItem, ok = c.items[items[n].Key]; ok { // already exists
-				oldItem.Value = items[n].Value
-				if oldItem.Priority != items[n].Priority {
-					oldItem.Priority = items[n].Priority
-					heap.Fix(c.heap, oldItem.index)
-				}
-			} else {
-				toAdd = append(toAdd, &items[n])
-			}
-		}
-	}
-
-	lenItems := uint(len(c.items))
-	lenAdd := uint(len(toAdd))
-	if lenItems+lenAdd > c.capacity {
-		c.evict(lenItems + lenAdd - c.capacity)
-	}
-
-	if lenAdd > 0 {
-		for _, item := range toAdd {
-			c.heap.Push(item)
-			c.items[item.Key] = item
-		}
-
-		// rebuild heap
-		heap.Init(c.heap)
-	}
+	heap.Push(&c.heap, newItem)
+	c.items[newItem.Key] = newItem
 }
 
 // Get gets a value by `key`
-func (c *Cache) Get(key interface{}) (interface{}, bool) {
+func (c *Cache) Get(key KeyType) (ValueType, bool) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -157,7 +98,7 @@ func (c *Cache) Get(key interface{}) (interface{}, bool) {
 }
 
 // Contains checks of `key` existence.
-func (c *Cache) Contains(key interface{}) bool {
+func (c *Cache) Contains(key KeyType) bool {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -167,13 +108,13 @@ func (c *Cache) Contains(key interface{}) bool {
 
 // Remove removes a value from cache.
 // Returns true if item was removed. Returns false if there is no item in cache.
-func (c *Cache) Remove(key interface{}) bool {
+func (c *Cache) Remove(key KeyType) bool {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	if item, ok := c.items[key]; ok {
 		delete(c.items, key)
-		heap.Remove(c.heap, item.index)
+		heap.Remove(&c.heap, item.index)
 		return true
 	}
 
@@ -191,7 +132,7 @@ func (c *Cache) Len() int {
 // caller must keep write lock
 func (c *Cache) evict(count uint) {
 	for count > 0 {
-		item := heap.Pop(c.heap)
+		item := heap.Pop(&c.heap)
 		delete(c.items, item.(*Item).Key)
 		count--
 	}
