@@ -129,6 +129,15 @@ func (c *Cache) Len() int {
 	return len(c.items)
 }
 
+// Purge removes all items
+func (c *Cache) Purge() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.heap = make(itemsHeap, 0, c.capacity)
+	c.items = make(itemsMap, c.capacity)
+}
+
 // caller must keep write lock
 func (c *Cache) evict(count uint) {
 	for count > 0 {

@@ -166,6 +166,19 @@ func TestItemsHeap_ZeroCapacity(t *testing.T) {
 	assert.False(t, c.Contains("foo"))
 }
 
+func TestCache_Purge(t *testing.T) {
+	c := New(3)
+
+	c.Add("foo1", "bar1", 1)
+	c.Add("foo2", "bar2", 1)
+
+	assert.Equal(t, c.Len(), 2)
+
+	c.Purge()
+
+	assert.Equal(t, c.Len(), 0)
+}
+
 func BenchmarkHeapCache_Add(b *testing.B) {
 	c := New(uint(b.N))
 
