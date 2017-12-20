@@ -90,7 +90,7 @@ func TestHeapCache_Evict(t *testing.T) {
 	c := New(uint(capacity))
 
 	for i = 0; i < n; i++ {
-		c.Add(i, i, int64(i))
+		c.Add(i, i, PriorityType(i))
 	}
 
 	assert.Equal(t, int(math.Min(float64(capacity), float64(n))), c.Len())
@@ -170,7 +170,7 @@ func BenchmarkHeapCache_Add(b *testing.B) {
 	c := New(uint(b.N))
 
 	for n := 0; n < b.N; n++ {
-		c.Add(n, n, int64(n))
+		c.Add(n, n, PriorityType(n))
 	}
 }
 
@@ -178,7 +178,7 @@ func BenchmarkHeapCache_AddWithEvictHalf(b *testing.B) {
 	c := New(uint(b.N / 2))
 
 	for n := 0; n < b.N; n++ {
-		c.Add(n, n, int64(n))
+		c.Add(n, n, PriorityType(n))
 	}
 }
 
