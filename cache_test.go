@@ -128,13 +128,23 @@ func TestCache_Contains(t *testing.T) {
 	c.Add("foo1", "bar1", 1)
 	c.Add("foo2", "bar2", 1)
 
+	assert.False(t, c.Contains("foo0"))
 	assert.True(t, c.Contains("foo1"))
-	assert.True(t, c.Contains("foo2"))
+	assert.True(t, c.Contains("foo1", "foo2"))
+	assert.False(t, c.Contains("foo1", "foo2", "foo3"))
+}
 
-	c.Remove("foo1")
+func TestCache_Any(t *testing.T) {
+	c := New(10)
 
-	assert.False(t, c.Contains("foo1"))
-	assert.True(t, c.Contains("foo2"))
+	c.Add("foo1", "bar1", 1)
+	c.Add("foo2", "bar2", 1)
+
+	assert.False(t, c.Any("foo0"))
+	assert.True(t, c.Any("foo1"))
+	assert.True(t, c.Any("foo1", "foo2"))
+	assert.True(t, c.Any("foo1", "foo2", "foo3"))
+	assert.False(t, c.Any("foo4", "foo5", "foo6"))
 }
 
 func TestCache_Priority(t *testing.T) {
