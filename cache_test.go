@@ -108,13 +108,18 @@ func TestCache_Remove(t *testing.T) {
 	c := New(10)
 
 	c.Add("foo1", "bar1", 1)
-	c.Add("foo2", "bar2", 1)
+	c.Add("foo2", "bar2", 2)
+	c.Add("foo3", "bar3", 3)
 
-	assert.True(t, c.Remove("foo1"))
-	assert.False(t, c.Remove("foo1"))
+	assert.Equal(t, 1, c.Remove("foo1"))
+	assert.Equal(t, 0, c.Remove("foo1"))
+	assert.Equal(t, 2, c.Len())
 
 	assert.False(t, c.Contains("foo1"))
 	assert.True(t, c.Contains("foo2"))
+
+	assert.Equal(t, 2, c.Remove("foo1", "foo2", "foo3"))
+	assert.Equal(t, 0, c.Len())
 }
 
 func TestCache_Contains(t *testing.T) {
