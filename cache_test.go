@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHeapCache_Add(t *testing.T) {
+func TestCache_Add(t *testing.T) {
 	c := New(10)
 
 	c.Add("foo1", "bar1", 1)
@@ -32,7 +32,7 @@ func TestHeapCache_Add(t *testing.T) {
 	}
 }
 
-func TestHeapCache_Get(t *testing.T) {
+func TestCache_Get(t *testing.T) {
 	c := New(10)
 
 	c.Add("foo1", "bar1", 1)
@@ -48,7 +48,7 @@ func TestHeapCache_Get(t *testing.T) {
 	}
 }
 
-func TestHeapCache_Len(t *testing.T) {
+func TestCache_Len(t *testing.T) {
 	c := New(10)
 
 	c.Add("foo1", "bar1", 1)
@@ -56,7 +56,7 @@ func TestHeapCache_Len(t *testing.T) {
 	assert.Equal(t, 1, c.Len())
 }
 
-func TestHeapCache_AddMany(t *testing.T) {
+func TestCache_AddMany(t *testing.T) {
 	c := New(3)
 
 	item1 := Item{Key: "foo1", Value: "bar1", Priority: 1}
@@ -82,7 +82,7 @@ func TestHeapCache_AddMany(t *testing.T) {
 	assert.True(t, c.Contains("foo4"))
 }
 
-func TestHeapCache_Evict(t *testing.T) {
+func TestCache_evict(t *testing.T) {
 	var i int
 	capacity := 50
 	n := 100
@@ -104,7 +104,7 @@ func TestHeapCache_Evict(t *testing.T) {
 	}
 }
 
-func TestHeapCache_Remove(t *testing.T) {
+func TestCache_Remove(t *testing.T) {
 	c := New(10)
 
 	c.Add("foo1", "bar1", 1)
@@ -117,7 +117,7 @@ func TestHeapCache_Remove(t *testing.T) {
 	assert.True(t, c.Contains("foo2"))
 }
 
-func TestHeapCache_Contains(t *testing.T) {
+func TestCache_Contains(t *testing.T) {
 	c := New(10)
 
 	c.Add("foo1", "bar1", 1)
@@ -132,7 +132,7 @@ func TestHeapCache_Contains(t *testing.T) {
 	assert.True(t, c.Contains("foo2"))
 }
 
-func TestHeapCache_Priority(t *testing.T) {
+func TestCache_Priority(t *testing.T) {
 	c := New(3)
 
 	c.Add("foo1", "bar1", 10)
@@ -158,7 +158,7 @@ func TestHeapCache_Priority(t *testing.T) {
 	assert.False(t, c.Contains("foo3"))
 }
 
-func TestItemsHeap_ZeroCapacity(t *testing.T) {
+func TestCache_ZeroCapacity(t *testing.T) {
 	c := New(0)
 
 	c.Add("foo", "bar", 1)
@@ -179,7 +179,34 @@ func TestCache_Purge(t *testing.T) {
 	assert.Equal(t, c.Len(), 0)
 }
 
-func BenchmarkHeapCache_Add(b *testing.B) {
+func TestCache_Evict(t *testing.T) {
+	c := New(3)
+
+	c.Add("foo1", "bar1", 1)
+	c.Add("foo2", "bar2", 2)
+	c.Add("foo3", "bar3", 3)
+
+	assert.Equal(t, c.Len(), 3)
+
+	evicted := c.Evict(2)
+	assert.Equal(t, evicted, 2)
+	assert.Equal(t, c.Len(), 1)
+
+	// overflow
+	evicted = c.Evict(2)
+	assert.Equal(t, evicted, 1)
+	assert.Equal(t, c.Len(), 0)
+
+	evicted = c.Evict(2)
+	assert.Equal(t, evicted, 0)
+	assert.Equal(t, c.Len(), 0)
+
+	evicted = c.Evict(0)
+	assert.Equal(t, evicted, 0)
+	assert.Equal(t, c.Len(), 0)
+}
+
+func BenchmarkCache_Add(b *testing.B) {
 	c := New(uint(b.N))
 
 	for n := 0; n < b.N; n++ {
@@ -187,7 +214,7 @@ func BenchmarkHeapCache_Add(b *testing.B) {
 	}
 }
 
-func BenchmarkHeapCache_AddWithEvictHalf(b *testing.B) {
+func BenchmarkCache_AddWithEvictHalf(b *testing.B) {
 	c := New(uint(b.N / 2))
 
 	for n := 0; n < b.N; n++ {
@@ -195,7 +222,7 @@ func BenchmarkHeapCache_AddWithEvictHalf(b *testing.B) {
 	}
 }
 
-func BenchmarkHeapCache_Get(b *testing.B) {
+func BenchmarkCache_Get(b *testing.B) {
 	c := New(uint(b.N))
 
 	for n := 0; n < b.N; n++ {

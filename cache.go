@@ -138,11 +138,21 @@ func (c *Cache) Purge() {
 	c.items = make(itemsMap, c.capacity)
 }
 
+// Evict removes `count` elements with lowest priority
+func (c *Cache) Evict(count uint) int {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	return int(c.evict(count))
+}
+
 // caller must keep write lock
-func (c *Cache) evict(count uint) {
-	for count > 0 {
+func (c *Cache) evict(count uint) (evicted uint) {
+	for count > 0 && c.heap.Len() > 0 {
 		item := heap.Pop(&c.heap)
 		delete(c.items, item.(*Item).Key)
 		count--
+		evicted++
 	}
+	return
 }
