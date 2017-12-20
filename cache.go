@@ -97,13 +97,30 @@ func (c *Cache) Get(key KeyType) (ValueType, bool) {
 	return nil, false
 }
 
-// Contains checks of `key` existence.
-func (c *Cache) Contains(key KeyType) bool {
+// Contains checks if ALL `keys` exists
+func (c *Cache) Contains(keys ...KeyType) bool {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
-	_, ok := c.items[key]
-	return ok
+	for _, key := range keys {
+		if _, ok := c.items[key]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// Any checks if ANY of `keys` exists
+func (c *Cache) Any(keys ...KeyType) bool {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	for _, key := range keys {
+		if _, ok := c.items[key]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // Remove removes values by keys
