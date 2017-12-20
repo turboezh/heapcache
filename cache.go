@@ -106,19 +106,20 @@ func (c *Cache) Contains(key KeyType) bool {
 	return ok
 }
 
-// Remove removes a value from cache.
-// Returns true if item was removed. Returns false if there is no item in cache.
-func (c *Cache) Remove(key KeyType) bool {
+// Remove removes values by keys
+// Returns number of actually removed items
+func (c *Cache) Remove(keys ...KeyType) (removed int) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if item, ok := c.items[key]; ok {
-		delete(c.items, key)
-		heap.Remove(&c.heap, item.index)
-		return true
+	for _, key := range keys {
+		if item, ok := c.items[key]; ok {
+			delete(c.items, key)
+			heap.Remove(&c.heap, item.index)
+			removed++
+		}
 	}
-
-	return false
+	return
 }
 
 // Len returns a number of items in cache
