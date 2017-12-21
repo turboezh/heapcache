@@ -87,7 +87,7 @@ func TestCache_evict(t *testing.T) {
 	capacity := 50
 	n := 100
 
-	c := New(uint(capacity))
+	c := New(capacity)
 
 	for i = 0; i < n; i++ {
 		c.Add(i, i, PriorityType(i))
@@ -159,16 +159,16 @@ func TestCache_Priority(t *testing.T) {
 	assert.True(t, c.Contains("foo3"))
 
 	c.Add("foo4", "bar4", 40)
-	assert.Equal(t, c.Len(), 3)
+	assert.Equal(t, 3, c.Len())
 	assert.True(t, c.Contains("foo4"))
 	assert.False(t, c.Contains("foo1"))
 
 	c.Add("foo3", "bar3", 10)
-	assert.Equal(t, c.Len(), 3)
+	assert.Equal(t, 3, c.Len())
 	assert.True(t, c.Contains("foo3"))
 
 	c.Add("foo5", "bar5", 40)
-	assert.Equal(t, c.Len(), 3)
+	assert.Equal(t, 3, c.Len())
 	assert.True(t, c.Contains("foo5"))
 	assert.False(t, c.Contains("foo3"))
 }
@@ -187,11 +187,11 @@ func TestCache_Purge(t *testing.T) {
 	c.Add("foo1", "bar1", 1)
 	c.Add("foo2", "bar2", 1)
 
-	assert.Equal(t, c.Len(), 2)
+	assert.Equal(t, 2, c.Len())
 
 	c.Purge()
 
-	assert.Equal(t, c.Len(), 0)
+	assert.Equal(t, 0, c.Len())
 }
 
 func TestCache_Evict(t *testing.T) {
@@ -204,25 +204,110 @@ func TestCache_Evict(t *testing.T) {
 	assert.Equal(t, c.Len(), 3)
 
 	evicted := c.Evict(2)
-	assert.Equal(t, evicted, 2)
-	assert.Equal(t, c.Len(), 1)
+	assert.Equal(t, 2, evicted)
+	assert.Equal(t, 1, c.Len())
 
 	// overflow
 	evicted = c.Evict(2)
-	assert.Equal(t, evicted, 1)
-	assert.Equal(t, c.Len(), 0)
+	assert.Equal(t, 1, evicted)
+	assert.Equal(t, 0, c.Len())
 
 	evicted = c.Evict(2)
-	assert.Equal(t, evicted, 0)
-	assert.Equal(t, c.Len(), 0)
+	assert.Equal(t, 0, evicted)
+	assert.Equal(t, 0, c.Len())
 
 	evicted = c.Evict(0)
-	assert.Equal(t, evicted, 0)
-	assert.Equal(t, c.Len(), 0)
+	assert.Equal(t, 0, evicted)
+	assert.Equal(t, 0, c.Len())
+}
+
+func TestCache_Capacity(t *testing.T) {
+	c := New(3)
+	assert.Equal(t, 3, c.Capacity())
+}
+
+func TestCache_ChangeCapacity(t *testing.T) {
+	c := New(3)
+
+	c.Add("foo1", "bar1", 1)
+	c.Add("foo2", "bar2", 2)
+	c.Add("foo3", "bar3", 3)
+
+	assert.Equal(t, 3, c.Len())
+	assert.Equal(t, 3, c.Capacity())
+
+	// expand
+	c.ChangeCapacity(2)
+	assert.Equal(t, 3, c.Len())
+	assert.Equal(t, 5, c.Capacity())
+
+	assert.True(t, c.Contains("foo1", "foo2", "foo3"))
+
+	// shrink
+	c.ChangeCapacity(-2)
+	assert.Equal(t, 3, c.Len())
+	assert.Equal(t, 3, c.Capacity())
+
+	assert.True(t, c.Contains("foo1", "foo2", "foo3"))
+
+	// shrink with evict
+	c.ChangeCapacity(-2)
+	assert.Equal(t, 1, c.Len())
+	assert.Equal(t, 1, c.Capacity())
+
+	assert.True(t, c.Contains("foo3"))
+	assert.False(t, c.Contains("foo1", "foo2"))
+
+	c.ChangeCapacity(2)
+	assert.Equal(t, 1, c.Len())
+	assert.Equal(t, 3, c.Capacity())
+
+	assert.True(t, c.Contains("foo3"))
+	assert.False(t, c.Contains("foo1", "foo2"))
+}
+
+func TestCache_SetCapacity(t *testing.T) {
+	c := New(3)
+
+	c.Add("foo1", "bar1", 1)
+	c.Add("foo2", "bar2", 2)
+	c.Add("foo3", "bar3", 3)
+
+	assert.Equal(t, 3, c.Len())
+	assert.Equal(t, 3, c.Capacity())
+
+	// expand
+	c.SetCapacity(5)
+	assert.Equal(t, 3, c.Len())
+	assert.Equal(t, 5, c.Capacity())
+
+	assert.True(t, c.Contains("foo1", "foo2", "foo3"))
+
+	// shrink
+	c.SetCapacity(3)
+	assert.Equal(t, 3, c.Len())
+	assert.Equal(t, 3, c.Capacity())
+
+	assert.True(t, c.Contains("foo1", "foo2", "foo3"))
+
+	// shrink with evict
+	c.SetCapacity(1)
+	assert.Equal(t, 1, c.Len())
+	assert.Equal(t, 1, c.Capacity())
+
+	assert.True(t, c.Contains("foo3"))
+	assert.False(t, c.Contains("foo1", "foo2"))
+
+	c.SetCapacity(3)
+	assert.Equal(t, 1, c.Len())
+	assert.Equal(t, 3, c.Capacity())
+
+	assert.True(t, c.Contains("foo3"))
+	assert.False(t, c.Contains("foo1", "foo2"))
 }
 
 func BenchmarkCache_Add(b *testing.B) {
-	c := New(uint(b.N))
+	c := New(b.N)
 
 	for n := 0; n < b.N; n++ {
 		c.Add(n, n, PriorityType(n))
@@ -230,7 +315,7 @@ func BenchmarkCache_Add(b *testing.B) {
 }
 
 func BenchmarkCache_AddWithEvictHalf(b *testing.B) {
-	c := New(uint(b.N / 2))
+	c := New(b.N / 2)
 
 	for n := 0; n < b.N; n++ {
 		c.Add(n, n, PriorityType(n))
@@ -238,7 +323,7 @@ func BenchmarkCache_AddWithEvictHalf(b *testing.B) {
 }
 
 func BenchmarkCache_Get(b *testing.B) {
-	c := New(uint(b.N))
+	c := New(b.N)
 
 	for n := 0; n < b.N; n++ {
 		c.Get(n)

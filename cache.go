@@ -26,7 +26,7 @@ type itemsMap map[KeyType]*Item
 
 // Cache is a cache abstraction
 type Cache struct {
-	capacity uint
+	capacity int
 	heap     itemsHeap
 	items    itemsMap
 	mutex    sync.RWMutex
@@ -34,12 +34,19 @@ type Cache struct {
 
 // New creates a new Cache instance
 // Capacity allowed to be zero. In this case cache becomes dummy, 'Add' do nothing and items can't be stored in.
-func New(capacity uint) *Cache {
+func New(capacity int) *Cache {
+	assetPositive(capacity)
+
 	return &Cache{
 		capacity: capacity,
 		heap:     make(itemsHeap, 0, capacity),
 		items:    make(itemsMap, capacity),
 	}
+}
+
+// Capacity returns capacity of cache
+func (c *Cache) Capacity() int {
+	return c.capacity
 }
 
 // Add adds a `value` into a cache. If `key` already exists, `value` and `priority` will be overwritten.
@@ -77,7 +84,7 @@ func (c *Cache) addItem(newItem *Item) {
 		return
 	}
 
-	if uint(len(c.items)) >= c.capacity {
+	if len(c.items) >= c.capacity {
 		c.evict(1)
 	}
 
@@ -157,15 +164,17 @@ func (c *Cache) Purge() {
 }
 
 // Evict removes `count` elements with lowest priority
-func (c *Cache) Evict(count uint) int {
+// TODO Is this useful ever?
+func (c *Cache) Evict(count int) int {
+	assetPositive(count)
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	return int(c.evict(count))
+	return c.evict(count)
 }
 
 // caller must keep write lock
-func (c *Cache) evict(count uint) (evicted uint) {
+func (c *Cache) evict(count int) (evicted int) {
 	for count > 0 && c.heap.Len() > 0 {
 		item := heap.Pop(&c.heap)
 		delete(c.items, item.(*Item).Key)
@@ -173,4 +182,46 @@ func (c *Cache) evict(count uint) (evicted uint) {
 		evicted++
 	}
 	return
+}
+
+// ChangeCapacity change cache capacity by `size`.
+// If `size` is positive cache capacity will be expanded, if `size` is negative, it will be shrinked.
+// Redundant items will be evicted.
+// It will panic in case of underflow.
+func (c *Cache) ChangeCapacity(size int) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.setCapacity(c.capacity + size)
+}
+
+func (c *Cache) setCapacity(capacity int) {
+	assetPositive(capacity)
+
+	if capacity == c.capacity {
+		return
+	}
+
+	redundant := len(c.items) - capacity
+	if redundant > 0 {
+		c.evict(redundant)
+	}
+
+	c.capacity = capacity
+}
+
+// SetCapacity sets cache capacity.
+// Redundant items will be evicted.
+// It will panic in case of underflow.
+func (c *Cache) SetCapacity(capacity int) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.setCapacity(capacity)
+}
+
+func assetPositive(value int) {
+	if value < 0 {
+		panic("value must be >= 0")
+	}
 }
