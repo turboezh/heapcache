@@ -236,6 +236,13 @@ func TestCache_ChangeCapacity(t *testing.T) {
 	assert.Equal(t, 3, c.Len())
 	assert.Equal(t, 3, c.Capacity())
 
+	// noop
+	c.ChangeCapacity(0)
+	assert.Equal(t, 3, c.Len())
+	assert.Equal(t, 3, c.Capacity())
+
+	assert.True(t, c.Contains("foo1", "foo2", "foo3"))
+
 	// expand
 	c.ChangeCapacity(2)
 	assert.Equal(t, 3, c.Len())
@@ -264,6 +271,26 @@ func TestCache_ChangeCapacity(t *testing.T) {
 
 	assert.True(t, c.Contains("foo3"))
 	assert.False(t, c.Contains("foo1", "foo2"))
+}
+
+func TestCache_SetCapacityUnderflow(t *testing.T) {
+	defer func () {
+		r := recover()
+		assert.NotNil(t, r)
+	}()
+
+	c := New(3)
+	c.SetCapacity(-5)
+}
+
+func TestCache_ChangeCapacityUnderflow(t *testing.T) {
+	defer func () {
+		r := recover()
+		assert.NotNil(t, r)
+	}()
+
+	c := New(3)
+	c.ChangeCapacity(-5)
 }
 
 func TestCache_SetCapacity(t *testing.T) {
