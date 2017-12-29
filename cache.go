@@ -8,21 +8,22 @@ import (
 // KeyType is a type of item key
 type KeyType interface{}
 
-// ValueType is a type of item value
-type ValueType interface{}
-
-// PriorityType is a type of item priority
-type PriorityType int
-
-// Item is a cache item wrapper
-type Item struct {
-	index    int
-	Key      KeyType
-	Value    ValueType
-	Priority PriorityType
+// Item is something that able to be added to cache.
+type Item interface {
+	// CacheKey return key of item in cache. It may be any key type (see https://golang.org/ref/spec#KeyType)
+	CacheKey() KeyType
+	// Less determines priority if items in cache. Items with less priority will be evicted first.
+	Less(Item) bool
 }
 
-type itemsMap map[KeyType]*Item
+type itemsMap map[KeyType]*wrapper
+
+// wrapper is a cache item wrapper
+type wrapper struct {
+	index int
+	key   KeyType
+	item  Item
+}
 
 // Cache is a cache abstraction
 type Cache struct {
@@ -51,12 +52,11 @@ func (c *Cache) Capacity() int {
 
 // Add adds a `value` into a cache. If `key` already exists, `value` and `priority` will be overwritten.
 // `key` must be a KeyType (see https://golang.org/ref/spec#KeyType)
-func (c *Cache) Add(key KeyType, value ValueType, priority PriorityType) {
+func (c *Cache) Add(item Item) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	item := Item{Key: key, Value: value, Priority: priority}
-	c.addItem(&item)
+	c.addItem(item)
 }
 
 // AddMany adds many items at once.
@@ -65,22 +65,20 @@ func (c *Cache) AddMany(items ...Item) {
 	defer c.mutex.Unlock()
 
 	for _, item := range items {
-		item := item
-		c.addItem(&item)
+		c.addItem(item)
 	}
 }
 
-func (c *Cache) addItem(newItem *Item) {
+func (c *Cache) addItem(newItem Item) {
 	if c.capacity == 0 {
 		return
 	}
 
-	if item, ok := c.items[newItem.Key]; ok { // already exists
-		item.Value = newItem.Value
-		if item.Priority != newItem.Priority {
-			item.Priority = newItem.Priority
-			heap.Fix(&c.heap, item.index)
-		}
+	key := newItem.CacheKey()
+
+	if item, ok := c.items[key]; ok { // already exists
+		c.items[key].item = newItem
+		heap.Fix(&c.heap, item.index)
 		return
 	}
 
@@ -88,19 +86,20 @@ func (c *Cache) addItem(newItem *Item) {
 		c.evict(1)
 	}
 
-	heap.Push(&c.heap, newItem)
-	c.items[newItem.Key] = newItem
+	w := wrapper{key: key, item: newItem}
+
+	heap.Push(&c.heap, &w)
+	c.items[w.key] = &w
 }
 
 // Get gets a value by `key`
-func (c *Cache) Get(key KeyType) (ValueType, bool) {
+func (c *Cache) Get(key KeyType) (Item, bool) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
 	if item, ok := c.items[key]; ok {
-		return item.Value, true
+		return item.item, true
 	}
-
 	return nil, false
 }
 
@@ -163,7 +162,7 @@ func (c *Cache) Purge() {
 	c.items = make(itemsMap, c.capacity)
 }
 
-// Evict removes `count` elements with lowest priority
+// Evict removes `count` elements with lowest priority.
 // TODO Is this useful ever?
 func (c *Cache) Evict(count int) int {
 	assetPositive(count)
@@ -177,7 +176,7 @@ func (c *Cache) Evict(count int) int {
 func (c *Cache) evict(count int) (evicted int) {
 	for count > 0 && c.heap.Len() > 0 {
 		item := heap.Pop(&c.heap)
-		delete(c.items, item.(*Item).Key)
+		delete(c.items, item.(*wrapper).key)
 		count--
 		evicted++
 	}
