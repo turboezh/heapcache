@@ -1,13 +1,13 @@
 package heapcache
 
-type itemsHeap []*Item
+type itemsHeap []*wrapper
 
 func (h *itemsHeap) Len() int {
 	return len(*h)
 }
 
 func (h *itemsHeap) Less(i, j int) bool {
-	return (*h)[i].Priority < (*h)[j].Priority
+	return (*h)[i].item.Less((*h)[j].item)
 }
 
 func (h *itemsHeap) Swap(i, j int) {
@@ -17,13 +17,12 @@ func (h *itemsHeap) Swap(i, j int) {
 }
 
 func (h *itemsHeap) Push(value interface{}) {
-	item := value.(*Item)
+	item := value.(*wrapper)
 	item.index = len(*h)
 	*h = append(*h, item)
 }
 
 func (h *itemsHeap) Pop() interface{} {
-	//old := *h
 	n := len(*h)
 	item := (*h)[n-1]
 	item.index = -1 // for safety
