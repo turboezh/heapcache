@@ -7,7 +7,7 @@ func (h *itemsHeap) Len() int {
 }
 
 func (h *itemsHeap) Less(i, j int) bool {
-	return (*h)[i].item.Less((*h)[j].item)
+	return (*h)[i].item.CacheLess((*h)[j].item)
 }
 
 func (h *itemsHeap) Swap(i, j int) {

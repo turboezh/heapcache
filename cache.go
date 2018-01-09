@@ -12,8 +12,8 @@ type KeyType interface{}
 type Item interface {
 	// CacheKey return key of item in cache. It may be any key type (see https://golang.org/ref/spec#KeyType)
 	CacheKey() KeyType
-	// Less determines priority if items in cache. Items with less priority will be evicted first.
-	Less(Item) bool
+	// CacheLess determines priority if items in cache. Items with less priority will be evicted first.
+	CacheLess(Item) bool
 }
 
 type itemsMap map[KeyType]*wrapper
