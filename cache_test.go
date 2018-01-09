@@ -18,7 +18,7 @@ func (i *CacheItem) CacheKey() KeyType {
 	return i.Id
 }
 
-func (i *CacheItem) Less(other Item) bool {
+func (i *CacheItem) CacheLess(other Item) bool {
 	return i.Priority < other.(*CacheItem).Priority
 }
 

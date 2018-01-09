@@ -37,7 +37,7 @@ func (i *CacheItem) CacheKey() heapcache.KeyType {
 	return i.Key
 }
 // Item
-func (i *CacheItem) Less(other Item) bool {
+func (i *CacheItem) CacheLess(other heapcache.Item) bool {
 	return i.Priority < other.(*CacheItem).Priority
 }
 ```
@@ -50,7 +50,7 @@ func (s String) CacheKey() heapcache.KeyType {
 	return s
 }
 
-func (s String) Less(other Item) bool {
+func (s String) CacheLess(other heapcache.Item) bool {
 	return len(s) < len(other.(String))
 }
 ```
