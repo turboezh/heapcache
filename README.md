@@ -87,9 +87,6 @@ ok := cache.Contains("foo", "go")
 
 // check if cache contain any of keys 
 ok := cache.Any("foo", "go")
-
-// Remove returns false if there is no item in cache
-wasRemoved := cache.Remove("foo3")
 ```
 
 ## Remove item
