@@ -13,7 +13,7 @@ type Item interface {
 	// CacheKey return key of item in cache. It may be any key type (see https://golang.org/ref/spec#KeyType)
 	CacheKey() KeyType
 	// CacheLess determines priority if items in cache. Items with less priority will be evicted first.
-	CacheLess(Item) bool
+	CacheLess(interface{}) bool
 }
 
 type itemsMap map[KeyType]*wrapper
@@ -36,7 +36,7 @@ type Cache struct {
 // New creates a new Cache instance
 // Capacity allowed to be zero. In this case cache becomes dummy, 'Add' do nothing and items can't be stored in.
 func New(capacity int) *Cache {
-	assetPositive(capacity)
+	assertPositive(capacity)
 
 	return &Cache{
 		capacity: capacity,
@@ -165,7 +165,7 @@ func (c *Cache) Purge() {
 // Evict removes `count` elements with lowest priority.
 // TODO Is this useful ever?
 func (c *Cache) Evict(count int) int {
-	assetPositive(count)
+	assertPositive(count)
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -195,7 +195,7 @@ func (c *Cache) ChangeCapacity(size int) {
 }
 
 func (c *Cache) setCapacity(capacity int) {
-	assetPositive(capacity)
+	assertPositive(capacity)
 
 	if capacity == c.capacity {
 		return
@@ -219,7 +219,7 @@ func (c *Cache) SetCapacity(capacity int) {
 	c.setCapacity(capacity)
 }
 
-func assetPositive(value int) {
+func assertPositive(value int) {
 	if value < 0 {
 		panic("value must be >= 0")
 	}
