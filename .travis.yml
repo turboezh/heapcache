@@ -1,24 +1,12 @@
 language: go
 
 go:
-  - 1.8
-  - 1.9
-  - 1.10.x
+  - 1.11.x
   - tip
 
 env:
   global:
-    - DEP_VERSION="0.4.1"
     - CC_TEST_REPORTER_ID="1d904046788b6f68a50265a9d1fd89263709d30bd332156ac86ed3e55aca8a37"
-
-before_install:
-  # Download the binary to bin folder in $GOPATH
-  - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
-  # Make the binary executable
-  - chmod +x $GOPATH/bin/dep
-
-install:
-  - dep ensure -vendor-only
 
 before_script:
   # coverage reporter

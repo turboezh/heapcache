@@ -5,38 +5,39 @@ import (
 	"sync"
 )
 
-// KeyType is a type of item key
-type KeyType interface{}
+type (
+	// Item is something that able to be added to cache.
+	Item interface {
+		// CacheKey return key of item in cache. It may be any key type (see https://golang.org/ref/spec#KeyType)
+		CacheKey() interface{}
+		// CacheLess determines priority if items in cache. Items with less priority will be evicted first.
+		CacheLess(interface{}) bool
+	}
 
-// Item is something that able to be added to cache.
-type Item interface {
-	// CacheKey return key of item in cache. It may be any key type (see https://golang.org/ref/spec#KeyType)
-	CacheKey() KeyType
-	// CacheLess determines priority if items in cache. Items with less priority will be evicted first.
-	CacheLess(interface{}) bool
-}
+	itemsMap map[interface{}]*wrapper
 
-type itemsMap map[KeyType]*wrapper
+	// wrapper is a cache item wrapper
+	wrapper struct {
+		index int
+		key   interface{}
+		item  Item
+	}
 
-// wrapper is a cache item wrapper
-type wrapper struct {
-	index int
-	key   KeyType
-	item  Item
-}
-
-// Cache is a cache abstraction
-type Cache struct {
-	capacity int
-	heap     itemsHeap
-	items    itemsMap
-	mutex    sync.RWMutex
-}
+	// Cache is a cache abstraction
+	Cache struct {
+		capacity int
+		heap     itemsHeap
+		items    itemsMap
+		mutex    sync.RWMutex
+	}
+)
 
 // New creates a new Cache instance
 // Capacity allowed to be zero. In this case cache becomes dummy, 'Add' do nothing and items can't be stored in.
 func New(capacity int) *Cache {
-	assertPositive(capacity)
+	if capacity < 0 {
+		capacity = 0
+	}
 
 	return &Cache{
 		capacity: capacity,
@@ -52,15 +53,7 @@ func (c *Cache) Capacity() int {
 
 // Add adds a `value` into a cache. If `key` already exists, `value` and `priority` will be overwritten.
 // `key` must be a KeyType (see https://golang.org/ref/spec#KeyType)
-func (c *Cache) Add(item Item) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	c.addItem(item)
-}
-
-// AddMany adds many items at once.
-func (c *Cache) AddMany(items ...Item) {
+func (c *Cache) Add(items ...Item) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -93,7 +86,7 @@ func (c *Cache) addItem(newItem Item) {
 }
 
 // Get gets a value by `key`
-func (c *Cache) Get(key KeyType) (Item, bool) {
+func (c *Cache) Get(key interface{}) (interface{}, bool) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -103,8 +96,8 @@ func (c *Cache) Get(key KeyType) (Item, bool) {
 	return nil, false
 }
 
-// Contains checks if ALL `keys` exists
-func (c *Cache) Contains(keys ...KeyType) bool {
+// All checks if ALL `keys` exists
+func (c *Cache) All(keys ...interface{}) bool {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -117,7 +110,7 @@ func (c *Cache) Contains(keys ...KeyType) bool {
 }
 
 // Any checks if ANY of `keys` exists
-func (c *Cache) Any(keys ...KeyType) bool {
+func (c *Cache) Any(keys ...interface{}) bool {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -131,7 +124,7 @@ func (c *Cache) Any(keys ...KeyType) bool {
 
 // Remove removes values by keys
 // Returns number of actually removed items
-func (c *Cache) Remove(keys ...KeyType) (removed int) {
+func (c *Cache) Remove(keys ...interface{}) (removed int) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -165,7 +158,6 @@ func (c *Cache) Purge() {
 // Evict removes `count` elements with lowest priority.
 // TODO Is this useful ever?
 func (c *Cache) Evict(count int) int {
-	assertPositive(count)
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -183,22 +175,23 @@ func (c *Cache) evict(count int) (evicted int) {
 	return
 }
 
-// ChangeCapacity change cache capacity by `size`.
-// If `size` is positive cache capacity will be expanded, if `size` is negative, it will be shrinked.
+// ChangeCapacity change cache capacity by `delta`.
+// If `delta` is positive cache capacity will be expanded, if `delta` is negative, it will be shrunk.
 // Redundant items will be evicted.
-// It will panic in case of underflow.
-func (c *Cache) ChangeCapacity(size int) {
+func (c *Cache) ChangeCapacity(delta int) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	c.setCapacity(c.capacity + size)
+	c.setCapacity(c.capacity + delta)
 }
 
 func (c *Cache) setCapacity(capacity int) {
-	assertPositive(capacity)
-
 	if capacity == c.capacity {
 		return
+	}
+
+	if capacity < 0 {
+		capacity = 0
 	}
 
 	redundant := len(c.items) - capacity
@@ -211,16 +204,10 @@ func (c *Cache) setCapacity(capacity int) {
 
 // SetCapacity sets cache capacity.
 // Redundant items will be evicted.
-// It will panic in case of underflow.
+// Capacity will never be less than zero.
 func (c *Cache) SetCapacity(capacity int) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	c.setCapacity(capacity)
-}
-
-func assertPositive(value int) {
-	if value < 0 {
-		panic("value must be >= 0")
-	}
 }
