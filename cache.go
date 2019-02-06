@@ -6,42 +6,42 @@ import (
 )
 
 type (
-	// Item is something that able to be added to cache.
-	Item interface {
-		// CacheKey return key of item in cache. It may be any key type (see https://golang.org/ref/spec#KeyType)
-		CacheKey() interface{}
-		// CacheLess determines priority if items in cache. Items with less priority will be evicted first.
-		CacheLess(interface{}) bool
-	}
+	// Less is a user-defined function that compares items to evaluate their priorities.
+	// Must return true if `a < b`.
+	Less func(a, b interface{}) bool
 
-	itemsMap map[interface{}]*wrapper
-
-	// wrapper is a cache item wrapper
-	wrapper struct {
-		index int
-		key   interface{}
-		item  Item
-	}
-
-	// Cache is a cache abstraction
+	// Cache is a cache abstraction.
+	// It uses user-defined comparator to evaluate priorities of cached items.
+	// Items with lowest priorities will be evicted first.
 	Cache struct {
 		capacity int
-		heap     itemsHeap
+		cmp      Less
+		heap     heap.Interface
 		items    itemsMap
 		mutex    sync.RWMutex
 	}
+
+	// wrapper is a cache value wrapper
+	wrapper struct {
+		index int
+		key   interface{}
+		value interface{}
+	}
+
+	itemsMap map[interface{}]*wrapper
 )
 
-// New creates a new Cache instance
+// New creates a new Cache instance.
 // Capacity allowed to be zero. In this case cache becomes dummy, 'Add' do nothing and items can't be stored in.
-func New(capacity int) *Cache {
+func New(capacity int, cmp Less) *Cache {
 	if capacity < 0 {
 		capacity = 0
 	}
 
 	return &Cache{
 		capacity: capacity,
-		heap:     make(itemsHeap, 0, capacity),
+		cmp:      cmp,
+		heap:     newHeap(capacity, cmp),
 		items:    make(itemsMap, capacity),
 	}
 }
@@ -51,27 +51,16 @@ func (c *Cache) Capacity() int {
 	return c.capacity
 }
 
-// Add adds a `value` into a cache. If `key` already exists, `value` and `priority` will be overwritten.
+// Add adds a `value` into a cache. If `key` already exists, `value` will be overwritten.
 // `key` must be a KeyType (see https://golang.org/ref/spec#KeyType)
-func (c *Cache) Add(items ...Item) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	for _, item := range items {
-		c.addItem(item)
-	}
-}
-
-func (c *Cache) addItem(newItem Item) {
+func (c *Cache) Add(key interface{}, value interface{}) {
 	if c.capacity == 0 {
 		return
 	}
 
-	key := newItem.CacheKey()
-
 	if item, ok := c.items[key]; ok { // already exists
-		c.items[key].item = newItem
-		heap.Fix(&c.heap, item.index)
+		c.items[key].value = value
+		heap.Fix(c.heap, item.index)
 		return
 	}
 
@@ -79,9 +68,9 @@ func (c *Cache) addItem(newItem Item) {
 		c.evict(1)
 	}
 
-	w := wrapper{key: key, item: newItem}
+	w := wrapper{key: key, value: value}
 
-	heap.Push(&c.heap, &w)
+	heap.Push(c.heap, &w)
 	c.items[w.key] = &w
 }
 
@@ -91,7 +80,7 @@ func (c *Cache) Get(key interface{}) (interface{}, bool) {
 	defer c.mutex.RUnlock()
 
 	if item, ok := c.items[key]; ok {
-		return item.item, true
+		return item.value, true
 	}
 	return nil, false
 }
@@ -131,7 +120,7 @@ func (c *Cache) Remove(keys ...interface{}) (removed int) {
 	for _, key := range keys {
 		if item, ok := c.items[key]; ok {
 			delete(c.items, key)
-			heap.Remove(&c.heap, item.index)
+			heap.Remove(c.heap, item.index)
 			removed++
 		}
 	}
@@ -151,12 +140,11 @@ func (c *Cache) Purge() {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	c.heap = make(itemsHeap, 0, c.capacity)
+	c.heap = newHeap(c.capacity, c.cmp)
 	c.items = make(itemsMap, c.capacity)
 }
 
 // Evict removes `count` elements with lowest priority.
-// TODO Is this useful ever?
 func (c *Cache) Evict(count int) int {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -167,7 +155,7 @@ func (c *Cache) Evict(count int) int {
 // caller must keep write lock
 func (c *Cache) evict(count int) (evicted int) {
 	for count > 0 && c.heap.Len() > 0 {
-		item := heap.Pop(&c.heap)
+		item := heap.Pop(c.heap)
 		delete(c.items, item.(*wrapper).key)
 		count--
 		evicted++
@@ -204,10 +192,18 @@ func (c *Cache) setCapacity(capacity int) {
 
 // SetCapacity sets cache capacity.
 // Redundant items will be evicted.
-// Capacity will never be less than zero.
+// Capacity never become less than zero.
 func (c *Cache) SetCapacity(capacity int) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	c.setCapacity(capacity)
+}
+
+// Fix calls heap.Init to reorder heap.
+func (c *Cache) Fix() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	heap.Init(c.heap)
 }
