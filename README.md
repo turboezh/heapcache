@@ -8,12 +8,10 @@
 [![GoDoc](https://godoc.org/github.com/turboezh/heapcache?status.svg)](https://godoc.org/github.com/turboezh/heapcache)
 
 This cache implementation is based on priority queue (see [Heap](https://golang.org/pkg/container/heap/)).
-
-! Prior v1.0.0 API may be broken at any time. 
+It uses user-defined comparator to evaluate priorities of cached items. Items with lowest priorities will be evicted first.
 
 Features:
  - simple standard data structure;
- - interface based;
  - no write locks on get operations;
  - capacity may be changed at any time.
 
@@ -23,79 +21,54 @@ Go >= 1.11
 # Documentation
 https://godoc.org/github.com/turboezh/heapcache
 
-
 # Examples
 
-## Cache item
-
-Define your own type that implements heapcache.Item interface.
+## Cache
 ```go
-type CacheItem struct {
-	Key      string
-	Value    string
-	Priority int
-}
-// CacheKey may return any key type (see https://golang.org/ref/spec#KeyType)
-func (i *CacheItem) CacheKey() interface{} {
-	return i.Key
-}
-// Item
-func (i *CacheItem) CacheLess(other interface{}) bool {
-	return i.Priority < other.(*CacheItem).Priority
-}
-```
-or
-```go
-// or
-type CacheableString string
-
-func (s CacheableString) CacheKey() interface{} {
-	return s
+type Foo struct {
+    Value int
+    Timestamp time.Time
 }
 
-func (s CacheableString) CacheLess(other interface{}) bool {
-	return len(s) < len(other.(String))
-}
+item1 := Foo{10, time.Now()}
+item2 := Foo{20, time.Now().Add(time.Second)}
+
+cache := New(10, func(a, b interface{}) bool {
+    return a.(*Foo).Timestamp.Before(b.(*Foo).Timestamp)
+})
 ```
 
 ## Add item
 ```go
-cache := heapcache.New(3)
+cache.Add("one", &item1)
+cache.Add("two", &item2)
 
-// add one item
-cache.Add(&CacheItem{"foo", "bar", 1})
-
-// add many items at once
-cache.Add(
-	&CacheItem{"foo", "bar", 1},
-	&CacheItem{"go", "lang", 100500},
-)
 ```
 
 ## Get item
 ```go
-item, exists := cache.Get("foo")
+item, exists := cache.Get("one")
 if !exists {
     // `foo` doesn't exists in cache
     // `item` is nil
 }
 // cache returns `interface{}` so we need to assert type (if need so)
-item = item.(*CacheItem)
+item = item.(*Foo) // = &item1
 ```
 
 ## Check item
 ```go
 // check if cache contain all keys 
-ok := cache.All("foo", "go")
+ok := cache.All("one", "two")
 
 // check if cache contain any of keys 
-ok := cache.Any("foo", "go")
+ok := cache.Any("one", "two")
 ```
 
 ## Remove item
 ```go
 // Remove returns false if there is no item in cache
-wasRemoved := cache.Remove("foo3")
+wasRemoved := cache.Remove("one")
 ```
 
 ## Support on Beerpay
