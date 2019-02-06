@@ -14,7 +14,7 @@ type CacheItem struct {
 	Priority int
 }
 
-func (i *CacheItem) CacheKey() KeyType {
+func (i *CacheItem) CacheKey() interface{} {
 	return i.Id
 }
 
@@ -82,22 +82,22 @@ func TestCache_AddMany(t *testing.T) {
 	item3 := &CacheItem{"foo3", "bar3", 3}
 	item4 := &CacheItem{"foo4", "bar4", 4}
 
-	c.AddMany(item1, item2)
+	c.Add(item1, item2)
 
 	assert.Equal(t, 2, c.Len())
 
-	assert.True(t, c.Contains("foo1"))
-	assert.True(t, c.Contains("foo2"))
+	assert.True(t, c.All("foo1"))
+	assert.True(t, c.All("foo2"))
 
 	item1.Priority = 100
-	c.AddMany(item1, item3, item4)
+	c.Add(item1, item3, item4)
 
 	assert.Equal(t, 3, c.Len())
 
-	assert.False(t, c.Contains("foo2"))
-	assert.True(t, c.Contains("foo1"))
-	assert.True(t, c.Contains("foo3"))
-	assert.True(t, c.Contains("foo4"))
+	assert.False(t, c.All("foo2"))
+	assert.True(t, c.All("foo1"))
+	assert.True(t, c.All("foo3"))
+	assert.True(t, c.All("foo4"))
 }
 
 func TestCache_evict(t *testing.T) {
@@ -118,9 +118,9 @@ func TestCache_evict(t *testing.T) {
 	for i = 0; i < n; i++ {
 		k := strconv.FormatInt(int64(i), 10)
 		if i < n-capacity {
-			assert.False(t, c.Contains(k))
+			assert.False(t, c.All(k))
 		} else {
-			assert.True(t, c.Contains(k))
+			assert.True(t, c.All(k))
 		}
 	}
 }
@@ -136,8 +136,8 @@ func TestCache_Remove(t *testing.T) {
 	assert.Equal(t, 0, c.Remove("foo1"))
 	assert.Equal(t, 2, c.Len())
 
-	assert.False(t, c.Contains("foo1"))
-	assert.True(t, c.Contains("foo2"))
+	assert.False(t, c.All("foo1"))
+	assert.True(t, c.All("foo2"))
 
 	assert.Equal(t, 2, c.Remove("foo1", "foo2", "foo3"))
 	assert.Equal(t, 0, c.Len())
@@ -149,10 +149,10 @@ func TestCache_Contains(t *testing.T) {
 	c.Add(&CacheItem{"foo1", "bar1", 1})
 	c.Add(&CacheItem{"foo2", "bar2", 1})
 
-	assert.False(t, c.Contains("foo0"))
-	assert.True(t, c.Contains("foo1"))
-	assert.True(t, c.Contains("foo1", "foo2"))
-	assert.False(t, c.Contains("foo1", "foo2", "foo3"))
+	assert.False(t, c.All("foo0"))
+	assert.True(t, c.All("foo1"))
+	assert.True(t, c.All("foo1", "foo2"))
+	assert.False(t, c.All("foo1", "foo2", "foo3"))
 }
 
 func TestCache_Any(t *testing.T) {
@@ -175,32 +175,32 @@ func TestCache_Priority(t *testing.T) {
 	c.Add(&CacheItem{"foo2", "bar2", 20})
 	c.Add(&CacheItem{"foo3", "bar3", 30})
 
-	assert.True(t, c.Contains("foo1"))
-	assert.True(t, c.Contains("foo2"))
-	assert.True(t, c.Contains("foo3"))
+	assert.True(t, c.All("foo1"))
+	assert.True(t, c.All("foo2"))
+	assert.True(t, c.All("foo3"))
 
 	c.Add(&CacheItem{"foo4", "bar4", 40})
 	assert.Equal(t, 3, c.Len())
-	assert.True(t, c.Contains("foo4"))
-	assert.False(t, c.Contains("foo1"))
+	assert.True(t, c.All("foo4"))
+	assert.False(t, c.All("foo1"))
 
 	c.Add(&CacheItem{"foo5", "bar5", 10})
 	assert.Equal(t, 3, c.Len())
-	assert.True(t, c.Contains("foo5"))
-	assert.False(t, c.Contains("foo2"))
+	assert.True(t, c.All("foo5"))
+	assert.False(t, c.All("foo2"))
 
 	c.Add(&CacheItem{"foo6", "bar6", 40})
 	assert.Equal(t, 3, c.Len())
-	assert.True(t, c.Contains("foo6"))
-	assert.False(t, c.Contains("foo5"))
+	assert.True(t, c.All("foo6"))
+	assert.False(t, c.All("foo5"))
 }
 
 func TestCache_ZeroCapacity(t *testing.T) {
 	c := New(0)
 
 	c.Add(&CacheItem{"foo", "bar", 1})
-	c.AddMany(&CacheItem{"foo", "bar", 1})
-	assert.False(t, c.Contains("foo"))
+	c.Add(&CacheItem{"foo", "bar", 1})
+	assert.False(t, c.All("foo"))
 }
 
 func TestCache_Purge(t *testing.T) {
@@ -263,56 +263,48 @@ func TestCache_ChangeCapacity(t *testing.T) {
 	assert.Equal(t, 3, c.Len())
 	assert.Equal(t, 3, c.Capacity())
 
-	assert.True(t, c.Contains("foo1", "foo2", "foo3"))
+	assert.True(t, c.All("foo1", "foo2", "foo3"))
 
 	// expand
 	c.ChangeCapacity(2)
 	assert.Equal(t, 3, c.Len())
 	assert.Equal(t, 5, c.Capacity())
 
-	assert.True(t, c.Contains("foo1", "foo2", "foo3"))
+	assert.True(t, c.All("foo1", "foo2", "foo3"))
 
 	// shrink
 	c.ChangeCapacity(-2)
 	assert.Equal(t, 3, c.Len())
 	assert.Equal(t, 3, c.Capacity())
 
-	assert.True(t, c.Contains("foo1", "foo2", "foo3"))
+	assert.True(t, c.All("foo1", "foo2", "foo3"))
 
 	// shrink with evict
 	c.ChangeCapacity(-2)
 	assert.Equal(t, 1, c.Len())
 	assert.Equal(t, 1, c.Capacity())
 
-	assert.True(t, c.Contains("foo3"))
-	assert.False(t, c.Contains("foo1", "foo2"))
+	assert.True(t, c.All("foo3"))
+	assert.False(t, c.All("foo1", "foo2"))
 
 	c.ChangeCapacity(2)
 	assert.Equal(t, 1, c.Len())
 	assert.Equal(t, 3, c.Capacity())
 
-	assert.True(t, c.Contains("foo3"))
-	assert.False(t, c.Contains("foo1", "foo2"))
+	assert.True(t, c.All("foo3"))
+	assert.False(t, c.All("foo1", "foo2"))
 }
 
 func TestCache_SetCapacityUnderflow(t *testing.T) {
-	defer func() {
-		r := recover()
-		assert.NotNil(t, r)
-	}()
-
 	c := New(3)
 	c.SetCapacity(-5)
+	assert.Equal(t, 0, c.Capacity())
 }
 
 func TestCache_ChangeCapacityUnderflow(t *testing.T) {
-	defer func() {
-		r := recover()
-		assert.NotNil(t, r)
-	}()
-
 	c := New(3)
 	c.ChangeCapacity(-5)
+	assert.Equal(t, 0, c.Capacity())
 }
 
 func TestCache_SetCapacity(t *testing.T) {
@@ -330,29 +322,29 @@ func TestCache_SetCapacity(t *testing.T) {
 	assert.Equal(t, 3, c.Len())
 	assert.Equal(t, 5, c.Capacity())
 
-	assert.True(t, c.Contains("foo1", "foo2", "foo3"))
+	assert.True(t, c.All("foo1", "foo2", "foo3"))
 
 	// shrink
 	c.SetCapacity(3)
 	assert.Equal(t, 3, c.Len())
 	assert.Equal(t, 3, c.Capacity())
 
-	assert.True(t, c.Contains("foo1", "foo2", "foo3"))
+	assert.True(t, c.All("foo1", "foo2", "foo3"))
 
 	// shrink with evict
 	c.SetCapacity(1)
 	assert.Equal(t, 1, c.Len())
 	assert.Equal(t, 1, c.Capacity())
 
-	assert.True(t, c.Contains("foo3"))
-	assert.False(t, c.Contains("foo1", "foo2"))
+	assert.True(t, c.All("foo3"))
+	assert.False(t, c.All("foo1", "foo2"))
 
 	c.SetCapacity(3)
 	assert.Equal(t, 1, c.Len())
 	assert.Equal(t, 3, c.Capacity())
 
-	assert.True(t, c.Contains("foo3"))
-	assert.False(t, c.Contains("foo1", "foo2"))
+	assert.True(t, c.All("foo3"))
+	assert.False(t, c.All("foo1", "foo2"))
 }
 
 func BenchmarkCache_Add(b *testing.B) {

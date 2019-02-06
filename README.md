@@ -17,6 +17,9 @@ Features:
  - no write locks on get operations;
  - capacity may be changed at any time.
 
+# Requirements
+Go >= 1.11
+
 # Documentation
 https://godoc.org/github.com/turboezh/heapcache
 
@@ -33,7 +36,7 @@ type CacheItem struct {
 	Priority int
 }
 // CacheKey may return any key type (see https://golang.org/ref/spec#KeyType)
-func (i *CacheItem) CacheKey() heapcache.KeyType {
+func (i *CacheItem) CacheKey() interface{} {
 	return i.Key
 }
 // Item
@@ -44,13 +47,13 @@ func (i *CacheItem) CacheLess(other interface{}) bool {
 or
 ```go
 // or
-type String string
+type CacheableString string
 
-func (s String) CacheKey() heapcache.KeyType {
+func (s CacheableString) CacheKey() interface{} {
 	return s
 }
 
-func (s String) CacheLess(other interface{}) bool {
+func (s CacheableString) CacheLess(other interface{}) bool {
 	return len(s) < len(other.(String))
 }
 ```
@@ -63,7 +66,7 @@ cache := heapcache.New(3)
 cache.Add(&CacheItem{"foo", "bar", 1})
 
 // add many items at once
-cache.AddMany(
+cache.Add(
 	&CacheItem{"foo", "bar", 1},
 	&CacheItem{"go", "lang", 100500},
 )
@@ -76,14 +79,14 @@ if !exists {
     // `foo` doesn't exists in cache
     // `item` is nil
 }
-// cache returns `heapcache.Item` so we need to assert type (if need so)
+// cache returns `interface{}` so we need to assert type (if need so)
 item = item.(*CacheItem)
 ```
 
 ## Check item
 ```go
 // check if cache contain all keys 
-ok := cache.Contains("foo", "go")
+ok := cache.All("foo", "go")
 
 // check if cache contain any of keys 
 ok := cache.Any("foo", "go")
